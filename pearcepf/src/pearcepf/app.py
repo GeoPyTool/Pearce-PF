@@ -277,11 +277,11 @@ class Pearce_Extended(QMainWindow):
         save_action.triggered.connect(self.save_figure)  # 连接到save_figure方法
         toolbar.addAction(save_action)
 
-        # # 在工具栏中添加一个Export action
-        # export_action = QAction('Export Result', self)
-        # export_action.setShortcut('Ctrl+E')  # 设置快捷键为Ctrl+E
-        # export_action.triggered.connect(self.export_result)  # 连接到export_result方法
-        # toolbar.addAction(export_action)
+        # 在工具栏中添加一个Export action
+        export_action = QAction('Export Result', self)
+        export_action.setShortcut('Ctrl+E')  # 设置快捷键为Ctrl+E
+        export_action.triggered.connect(self.export_result)  # 连接到export_result方法
+        toolbar.addAction(export_action)
 
 
         # 创建一个表格视图
@@ -341,6 +341,22 @@ class Pearce_Extended(QMainWindow):
             elif file_name.endswith(('.xls', '.xlsx')):
                 self.df = pd.read_excel(file_name)        
             
+            # 找到所有包含'PPM'或'ppm'的列名
+            trace_cols = self.df.filter(regex='(PPM|ppm)', axis=1).columns
+
+            # 创建一个新的列名映射
+            new_cols = {col: re.sub(r'[_\(\)]|(PPM|ppm)', '', col, flags=re.IGNORECASE) for col in trace_cols}
+
+            # 重命名列
+            self.df.rename(columns=new_cols, inplace=True)
+            if 'Y+Nb' not in self.df.columns:
+                self.df['Y+Nb'] = self.df['Y'] + self.df['Nb']
+
+            if 'Yb+Ta' not in self.df.columns:
+                self.df['Yb+Ta'] = self.df['Yb'] + self.df['Ta']
+
+            self.target_x_list = ['Y+Nb','Yb+Ta','Y','Yb']
+            self.target_y_list = ['Rb','Rb','Nb','Ta']            
             
             model = PandasModel(self.df)
             self.table.setModel(model)  # 设置表格视图的模型
@@ -355,7 +371,36 @@ class Pearce_Extended(QMainWindow):
         self.canvas.figure.clear()
         self.canvas.draw()
 
+    def generate_polygon(self):
+        self.Polygon_dict_list = []
 
+        # 获取当前文件的绝对路径
+        current_file_path = os.path.abspath(__file__)
+
+        # 获取当前文件的目录
+        current_directory = os.path.dirname(current_file_path)
+        # 改变当前工作目录
+        os.chdir(current_directory)
+
+        with open('Pearson_cord.json', 'r', encoding='utf-8') as file:
+            cord = json.load(file)
+
+        # 将读取的边界线条数据存储到类实例变量self.cord中
+        self.cord = cord
+        self.keys = ['coords0', 'coords1', 'coords2', 'coords3']
+
+        # Get diagram boundary lines
+        for key in self.keys:
+            if key in cord:
+                polygons = cord[key]["Polygons"]
+                labels = cord[key]["Labels"]
+                Polygon_dict = {}
+                for i in range(len(polygons)):
+                    x_coords = [point[0] for point in polygons[i]]
+                    y_coords = [point[1] for point in polygons[i]]
+                    polygon = Polygon(list(zip(x_coords, y_coords)), closed=True, fill=None, edgecolor='r')
+                    Polygon_dict[labels[i]] = polygon
+                self.Polygon_dict_list.append(Polygon_dict)
     def plot_data(self):
         if self.df.empty:
             pass
@@ -374,14 +419,6 @@ class Pearce_Extended(QMainWindow):
             # 改变当前工作目录
             os.chdir(current_directory)
 
-            # 找到所有包含'PPM'或'ppm'的列名
-            trace_cols = self.df.filter(regex='(PPM|ppm)', axis=1).columns
-
-            # 创建一个新的列名映射
-            new_cols = {col: re.sub(r'[_\(\)]|(PPM|ppm)', '', col, flags=re.IGNORECASE) for col in trace_cols}
-
-            # 重命名列
-            self.df.rename(columns=new_cols, inplace=True)
 
             # 获取Figure对象
             self.canvas.figure.clf()
@@ -401,7 +438,7 @@ class Pearce_Extended(QMainWindow):
                 coords = cord[key]
                 for j, line in enumerate(coords["BaseLines"]):
                     start, end = line
-                    linestyle = '--' if key == 'coords3' and j == len(coords["BaseLines"]) - 1 else '-'
+                    linestyle = '--' if (key == 'coords2' or key == 'coords3') and j == len(coords["BaseLines"]) - 1 else '-'
                     # ax.plot([np.log10(start[0]), np.log10(end[0])], [np.log10(start[1]), np.log10(end[1])], color='gray', linestyle=linestyle)
                     ax.plot([start[0], end[0]], [start[1], end[1]], color='gray', linestyle=linestyle)
                 for loc, label in zip(coords["LabelsLocations"], coords["Labels"]):
@@ -411,18 +448,12 @@ class Pearce_Extended(QMainWindow):
                 ax.set_xscale('log')
                 ax.set_yscale('log')
 
-
-            self.df['Y+Nb'] = self.df['Y'] + self.df['Nb']
-            self.df['Yb+Ta'] = self.df['Yb'] + self.df['Ta']
-
-            target_x_list = ['Y+Nb','Yb+Ta','Y','Yb']
-            target_y_list = ['Rb','Rb','Nb','Ta']
             
             # 遍历ax_list和target_y_list
             # for ax, target_y in zip(ax_list.flatten(), target_y_list):
 
             # 遍历ax_list和target_y_list
-            for ax, target_x,target_y in itertools.zip_longest(ax_list.flatten(), target_x_list, target_y_list):
+            for ax, target_x,target_y in itertools.zip_longest(ax_list.flatten(), self.target_x_list, self.target_y_list):
                 # 检查target_y的值，如果是None，就跳过绘图
                 if target_y is None:
                     ax.clear()
@@ -529,11 +560,44 @@ class Pearce_Extended(QMainWindow):
             pass
         else:
             pass                        
+            # 遍历keys
+        
+            result_df_list=[]
+            for key in self.keys: # self.keys = ['coords0', 'coords1', 'coords2', 'coords3']
+                pass
+                for Polygon_dict, target_x, target_y in itertools.zip_longest(self.Polygon_dict_list, self.target_x_list, self.target_y_list):
+                    x = self.df[target_x]
+                    y = self.df[target_y]
+                    def point_in_polygon(point, polygon):
+                        return Path(polygon).contains_points([point])
 
-            df = pd.DataFrame()
-            self.result_show = AppForm(df= df,title = 'Pearce Result')
-            self.result_show.show()   
+                    # 创建一个列表来保存所有的标签
+                    type_list = []
+                    # 遍历x和y坐标数组中的所有点对
+                    for x_val, y_val in zip(x, y):
+                        # 对于每个点，遍历字典Polygon_dict中存储的所有多边形及其类型标签
+                        for type_label, polygon in Polygon_dict.items():
+                            # 判断当前点是否位于该多边形内
+                            if point_in_polygon((x_val, y_val), polygon.get_xy()):
+                                # 若点在多边形内，则从tas_cord字典的key键下获取与type_label对应的值，并添加到type_list列表中
+                                type_list.append(self.cord[key].get(type_label))
+                                # 找到符合条件的第一个多边形后跳出内层循环
+                                break
+                        # 若点不在任何多边形内，则将None添加到type_list列表中
+                        else:
+                            type_list.append(None)
+                # 将type_list内容转换为DataFrame，设置列名为key
+                result_df_list.append(pd.DataFrame({key: type_list})) 
+                # 将分类结果DataFrame、概率最大值DataFrame以及其它两个预先存在的DataFrame tas_df和self.df沿列方向拼接在一起
+            
+            result_df_list.append(self.df)
+            df = pd.concat(result_df_list, axis=1)
 
+            # 创建一个AppForm实例，用于展示结果数据
+            self.result_show = AppForm(df=df, title='TAS Result')
+
+            # 显示该实例对应的窗口界面
+            self.result_show.show()
 
     def save_figure(self):
         file_name, _ = QFileDialog.getSaveFileName(self, 
