@@ -399,14 +399,18 @@ class Pearce_Extended(QMainWindow):
 
             for i, (ax, key) in enumerate(zip(ax_list.flatten(), keys)):
                 coords = cord[key]
-                for line in coords["BaseLines"]:
-                    # ax.plot(np.log10(line[0]), np.log10(line[1]), color='gray')
+                for j, line in enumerate(coords["BaseLines"]):
                     start, end = line
-                    ax.plot([np.log10(start[0]), np.log10(end[0])], [np.log10(start[1]), np.log10(end[1])], color='gray')
+                    linestyle = '--' if key == 'coords3' and j == len(coords["BaseLines"]) - 1 else '-'
+                    # ax.plot([np.log10(start[0]), np.log10(end[0])], [np.log10(start[1]), np.log10(end[1])], color='gray', linestyle=linestyle)
+                    ax.plot([start[0], end[0]], [start[1], end[1]], color='gray', linestyle=linestyle)
                 for loc, label in zip(coords["LabelsLocations"], coords["Labels"]):
                     ax.text(loc[0], loc[1], label)
                 ax.set_xlabel(coords["xLabel"])
                 ax.set_ylabel(coords["yLabel"])
+                ax.set_xscale('log')
+                ax.set_yscale('log')
+
 
             self.df['Y+Nb'] = self.df['Y'] + self.df['Nb']
             self.df['Yb+Ta'] = self.df['Yb'] + self.df['Ta']
@@ -475,7 +479,8 @@ class Pearce_Extended(QMainWindow):
                                     child.set_alpha(max(current_alpha / 2, 0.005))  # 降低透明度，但不低于0.01
 
                     def plot_group(group):
-                        ax.scatter(np.log10(group['x']), np.log10(group['y']), c=group['color'], alpha=group['alpha'], s=group['size'], label=group.name,edgecolors='black')
+                        # ax.scatter(np.log10(group['x']), np.log10(group['y']), c=group['color'], alpha=group['alpha'], s=group['size'], label=group.name,edgecolors='black')
+                        ax.scatter(group['x'], group['y'], c=group['color'], alpha=group['alpha'], s=group['size'], label=group.name,edgecolors='black')
 
                     # 创建一个新的DataFrame，包含所有需要的列
                     df = pd.DataFrame({
