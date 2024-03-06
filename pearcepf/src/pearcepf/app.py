@@ -382,7 +382,7 @@ class Pearce_Extended(QMainWindow):
         # 改变当前工作目录
         os.chdir(current_directory)
 
-        with open('Pearson_cord.json', 'r', encoding='utf-8') as file:
+        with open('pearce_cord.json', 'r', encoding='utf-8') as file:
             cord = json.load(file)
 
         # 将读取的边界线条数据存储到类实例变量self.cord中
@@ -392,10 +392,9 @@ class Pearce_Extended(QMainWindow):
         # Get diagram boundary lines
         for key in self.keys:
             if key in cord:
-                polygons = cord[key]["Polygons"]
-                labels = cord[key]["Labels"]
+                # polygons = cord[key]["Polygons"]
+                # labels = cord[key]["Labels"]
                 Polygon_dict = {}
-
                 for type_label, line in cord[key]["Polygons"].items():
                     # 提取每条线的x坐标和y坐标
                     x_coords = [point[0] for point in line]
@@ -435,7 +434,7 @@ class Pearce_Extended(QMainWindow):
             # 现在，ax_list是一个包含4个subplot的列表
             # ax = self.canvas.figure.add_subplot(111)
 
-            with open('Pearson_cord.json', 'r', encoding='utf-8') as file:
+            with open('pearce_cord.json', 'r', encoding='utf-8') as file:
                 cord = json.load(file)
 
             keys = ['coords0', 'coords1', 'coords2', 'coords3']
@@ -582,25 +581,26 @@ class Pearce_Extended(QMainWindow):
                     # 遍历x和y坐标数组中的所有点对
                     for x_val, y_val in zip(x, y):
                         # 对于每个点，遍历字典Polygon_dict中存储的所有多边形及其类型标签
-                        for type_label, polygon in Polygon_dict.items():
+                        for type_label, polygon in Polygon_dict.items():                            
                             # 判断当前点是否位于该多边形内
                             if point_in_polygon((x_val, y_val), polygon.get_xy()):
-                                # 若点在多边形内，则从tas_cord字典的key键下获取与type_label对应的值，并添加到type_list列表中
-                                type_list.append(self.cord[key].get(type_label))
+                                print(type_label,x_val,y_val,polygon.get_xy(),point_in_polygon((x_val, y_val), polygon.get_xy()))
+                                # 若点在多边形内，则从Pearce_cord字典的key键下获取与type_label对应的值，并添加到type_list列表中
+                                type_list.append(type_label)
                                 # 找到符合条件的第一个多边形后跳出内层循环
-                                break
-                        # 若点不在任何多边形内，则将None添加到type_list列表中
-                        else:
-                            type_list.append(None)
+                                # break
+                            # 若点不在任何多边形内，则将None添加到type_list列表中
+                            else:
+                                pass
                 # 将type_list内容转换为DataFrame，设置列名为key
                 result_df_list.append(pd.DataFrame({key: type_list})) 
-                # 将分类结果DataFrame、概率最大值DataFrame以及其它两个预先存在的DataFrame tas_df和self.df沿列方向拼接在一起
+                # 将分类结果DataFrame、概率最大值DataFrame以及其它两个预先存在的DataFrame Pearce_df和self.df沿列方向拼接在一起
             
             result_df_list.append(self.df)
             df = pd.concat(result_df_list, axis=1)
 
             # 创建一个AppForm实例，用于展示结果数据
-            self.result_show = AppForm(df=df, title='TAS Result')
+            self.result_show = AppForm(df=df, title='Extended Pearce Diagram Result')
 
             # 显示该实例对应的窗口界面
             self.result_show.show()
