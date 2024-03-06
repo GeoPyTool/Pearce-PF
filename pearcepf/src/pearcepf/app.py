@@ -395,11 +395,17 @@ class Pearce_Extended(QMainWindow):
                 polygons = cord[key]["Polygons"]
                 labels = cord[key]["Labels"]
                 Polygon_dict = {}
-                for i in range(len(polygons)):
-                    x_coords = [point[0] for point in polygons[i]]
-                    y_coords = [point[1] for point in polygons[i]]
+
+                for type_label, line in cord[key]["Polygons"].items():
+                    # 提取每条线的x坐标和y坐标
+                    x_coords = [point[0] for point in line]
+                    y_coords = [point[1] for point in line]
+
+                    # 创建一个闭合的多边形，不填充颜色，边框颜色为红色
                     polygon = Polygon(list(zip(x_coords, y_coords)), closed=True, fill=None, edgecolor='r')
-                    Polygon_dict[labels[i]] = polygon
+                    Polygon_dict[type_label] = polygon
+                    # 将创建好的多边形对象存入字典中，键为type_label
+                    # 2024年3月6日 时间 进度 还是无法判别分类
                 self.Polygon_dict_list.append(Polygon_dict)
     def plot_data(self):
         if self.df.empty:
